@@ -1,0 +1,263 @@
+<style>
+.container { 
+	display: flex; 
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	width: 800;
+	border: 1px solid gray;
+	padding: 10px;
+	margin: 5px;
+}
+.col {
+	border: 1px solid rgba(39,41,43,0.1);	
+	background-color: rgba(39,41,43,0.03);
+	padding: 10px;
+	margin: 5px;
+	flex: 1 0 0%;
+}
+.pixelated {
+  /* IE, only works on <img> tags */
+  -ms-interpolation-mode: nearest-neighbor;
+  /* Firefox */
+  image-rendering: crisp-edges;
+  /* Chromium + Safari */
+  image-rendering: pixelated;
+}
+
+.skip-img {
+	display: none;
+}
+
+.skip-img, .both-img {
+	width: 150px;
+}
+</style>
+
+<div>
+  <input type="checkbox" id="img_intermediate" name="img_intermediate" checked>
+  <label for="img_intermediate">With intermediate step</label>
+</div>
+
+<br>
+
+<form name="properties_radio">
+  <label><input type="radio" name="prop" value="all" checked >
+  Show all</label>
+
+  <br>
+
+  <label><input type="radio" name="prop" value="trivial" />
+  Preserve current step</label>
+  <br>
+
+  <label><input type="radio" name="prop" value="trivial_two" />
+  Preserve by two steps</label>
+  <br>
+
+  <label><input type="radio" name="prop" value="time_symmetricale" />
+  Time symmetrical</label>
+  <br>
+
+  <label><input type="radio" name="prop" value="self_mirror" />
+  Self-mirrored</label>
+</form>
+
+<script>
+function highlight(name, color) {
+	let elements = document.getElementsByClassName(name);
+	for (var i = elements.length - 1; i >= 0; i--) {
+		elements[i].style["background-color"] = color;
+	}
+}
+function leave(name) {
+	let elements = document.getElementsByClassName(name);
+	for (var i = elements.length - 1; i >= 0; i--) {
+		elements[i].style["background-color"] = "rgba(39,41,43,0.03)";
+	}
+}
+
+let rad = document.properties_radio.prop;
+let prev = { value: 'all' };
+let colors = {
+	trivial: 'rgba(255,41,43,0.20)',//
+	trivial_two: 'rgba(255,41,43,0.20)',//'rgba(21,192,43,0.20)',
+	time_symmetricale: 'rgba(255,41,43,0.20)',//'rgba(21,41,255,0.20)',
+	self_mirror: 'rgba(255,41,43,0.20)',//'rgba(21,128,255,0.20)',
+};
+for (var i = 0; i < rad.length; i++) {
+    rad[i].addEventListener('change', function() {
+        if (this !== prev) {
+            leave(prev.value);
+            highlight(this.value, colors[this.value]);
+        }
+        prev = this;
+    });
+}
+
+
+document.getElementById('img_intermediate').addEventListener('change', function() {
+    if (this.checked) {
+    	let elements = document.getElementsByClassName("skip-img");
+		for (var i = elements.length - 1; i >= 0; i--) {
+			elements[i].style.display = "none";
+		}
+
+		elements = document.getElementsByClassName("both-img");
+		for (var i = elements.length - 1; i >= 0; i--) {
+			elements[i].style.display = "block";
+		}
+    } else {
+    	let elements = document.getElementsByClassName("skip-img");
+		for (var i = elements.length - 1; i >= 0; i--) {
+			elements[i].style.display = "block";
+		}
+
+		elements = document.getElementsByClassName("both-img");
+		for (var i = elements.length - 1; i >= 0; i--) {
+			elements[i].style.display = "none";
+		}
+    }
+});
+</script>
+
+
+<center>
+<div class="container">
+
+<div class="col trivial trivial_two time_symmetricale self_mirror">
+<tt><b>0</b> - [0 1 2 3]</tt><br>
+<img class="pixelated skip-img" src="img/0_skip.png">
+<img class="pixelated both-img" src="img/0_both.png">
+</div>
+<div class="col">
+<tt><b>1</b> - [0 1 3 2]</tt><br>
+<img class="pixelated skip-img" src="img/1_skip.png">
+<img class="pixelated both-img" src="img/1_both.png">
+</div>
+<div class="col self_mirror">
+<tt><b>2</b> - [0 2 1 3]</tt><br>
+<img class="pixelated skip-img" src="img/2_skip.png">
+<img class="pixelated both-img" src="img/2_both.png">
+</div>
+<div class="col">
+<tt><b>3</b> - [0 2 3 1]</tt><br>
+<img class="pixelated skip-img" src="img/3_skip.png">
+<img class="pixelated both-img" src="img/3_both.png">
+</div>
+<div class="col">
+<tt><b>4</b> - [0 3 1 2]</tt><br>
+<img class="pixelated skip-img" src="img/4_skip.png">
+<img class="pixelated both-img" src="img/4_both.png">
+</div>
+<div class="col">
+<tt><b>5</b> - [0 3 2 1]</tt><br>
+<img class="pixelated skip-img" src="img/5_skip.png">
+<img class="pixelated both-img" src="img/5_both.png">
+</div>
+<div class="col">
+<tt><b>6</b> - [1 0 2 3]</tt><br>
+<img class="pixelated skip-img" src="img/6_skip.png">
+<img class="pixelated both-img" src="img/6_both.png">
+</div>
+<div class="col trivial_two time_symmetricale self_mirror">
+<tt><b>7</b> - [1 0 3 2]</tt><br>
+<img class="pixelated skip-img" src="img/7_skip.png">
+<img class="pixelated both-img" src="img/7_both.png">
+</div>
+<div class="col">
+<tt><b>8</b> - [1 2 0 3]</tt><br>
+<img class="pixelated skip-img" src="img/8_skip.png">
+<img class="pixelated both-img" src="img/8_both.png">
+</div>
+<div class="col">
+<tt><b>9</b> - [1 2 3 0]</tt><br>
+<img class="pixelated skip-img" src="img/9_skip.png">
+<img class="pixelated both-img" src="img/9_both.png">
+</div>
+<div class="col self_mirror">
+<tt><b>10</b> - [1 3 0 2]</tt><br>
+<img class="pixelated skip-img" src="img/10_skip.png">
+<img class="pixelated both-img" src="img/10_both.png">
+</div>
+<div class="col">
+<tt><b>11</b> - [1 3 2 0]</tt><br>
+<img class="pixelated skip-img" src="img/11_skip.png">
+<img class="pixelated both-img" src="img/11_both.png">
+</div>
+<div class="col">
+<tt><b>12</b> - [2 0 1 3]</tt><br>
+<img class="pixelated skip-img" src="img/12_skip.png">
+<img class="pixelated both-img" src="img/12_both.png">
+</div>
+<div class="col self_mirror">
+<tt><b>13</b> - [2 0 3 1]</tt><br>
+<img class="pixelated skip-img" src="img/13_skip.png">
+<img class="pixelated both-img" src="img/13_both.png">
+</div>
+<div class="col">
+<tt><b>14</b> - [2 1 0 3]</tt><br>
+<img class="pixelated skip-img" src="img/14_skip.png">
+<img class="pixelated both-img" src="img/14_both.png">
+</div>
+<div class="col">
+<tt><b>15</b> - [2 1 3 0]</tt><br>
+<img class="pixelated skip-img" src="img/15_skip.png">
+<img class="pixelated both-img" src="img/15_both.png">
+</div>
+<div class="col trivial_two time_symmetricale self_mirror">
+<tt><b>16</b> - [2 3 0 1]</tt><br>
+<img class="pixelated skip-img" src="img/16_skip.png">
+<img class="pixelated both-img" src="img/16_both.png">
+</div>
+<div class="col">
+<tt><b>17</b> - [2 3 1 0]</tt><br>
+<img class="pixelated skip-img" src="img/17_skip.png">
+<img class="pixelated both-img" src="img/17_both.png">
+</div>
+<div class="col">
+<tt><b>18</b> - [3 0 1 2]</tt><br>
+<img class="pixelated skip-img" src="img/18_skip.png">
+<img class="pixelated both-img" src="img/18_both.png">
+</div>
+<div class="col">
+<tt><b>19</b> - [3 0 2 1]</tt><br>
+<img class="pixelated skip-img" src="img/19_skip.png">
+<img class="pixelated both-img" src="img/19_both.png">
+</div>
+<div class="col">
+<tt><b>20</b> - [3 1 0 2]</tt><br>
+<img class="pixelated skip-img" src="img/20_skip.png">
+<img class="pixelated both-img" src="img/20_both.png">
+</div>
+<div class="col self_mirror">
+<tt><b>21</b> - [3 1 2 0]</tt><br>
+<img class="pixelated skip-img" src="img/21_skip.png">
+<img class="pixelated both-img" src="img/21_both.png">
+</div>
+<div class="col">
+<tt><b>22</b> - [3 2 0 1]</tt><br>
+<img class="pixelated skip-img" src="img/22_skip.png">
+<img class="pixelated both-img" src="img/22_both.png">
+</div>
+<div class="col trivial trivial_two time_symmetricale self_mirror">
+<tt><b>23</b> - [3 2 1 0]</tt><br>
+<img class="pixelated skip-img" src="img/23_skip.png">
+<img class="pixelated both-img" src="img/23_both.png">
+</div>
+
+</div>
+
+<div class="container">
+<img src="svg/1.svg">
+<img src="svg/2.svg">
+<img src="svg/3.svg">
+<img src="svg/4.svg">
+<img src="svg/5.svg">
+</div>
+
+<img src="svg/commute.svg"><br>
+
+<img src="svg/commute_2.svg">
+
+</center>
