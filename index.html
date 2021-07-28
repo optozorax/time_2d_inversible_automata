@@ -51,16 +51,16 @@
   Preserve current step</label>
   <br>
 
-  <label><input type="radio" name="prop" value="trivial_two" />
-  Preserve by two steps</label>
-  <br>
-
   <label><input type="radio" name="prop" value="time_symmetricale" />
   Time symmetrical</label>
   <br>
 
   <label><input type="radio" name="prop" value="self_mirror" />
   Self-mirrored</label>
+  <br>
+
+  <label><input type="radio" name="prop" value="save_count" />
+  Save count</label>
 </form>
 
 <script>
@@ -81,9 +81,9 @@ let rad = document.properties_radio.prop;
 let prev = { value: 'all' };
 let colors = {
 	trivial: 'rgba(255,41,43,0.20)',//
-	trivial_two: 'rgba(255,41,43,0.20)',//'rgba(21,192,43,0.20)',
 	time_symmetricale: 'rgba(255,41,43,0.20)',//'rgba(21,41,255,0.20)',
 	self_mirror: 'rgba(255,41,43,0.20)',//'rgba(21,128,255,0.20)',
+	save_count: 'rgba(255,41,43,0.20)',//'rgba(21,128,255,0.20)',
 };
 for (var i = 0; i < rad.length; i++) {
     rad[i].addEventListener('change', function() {
@@ -125,7 +125,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <center>
 <div class="container">
 
-<div class="col trivial trivial_two time_symmetricale self_mirror">
+<div class="col trivial time_symmetricale self_mirror save_count">
 <tt><b>0</b> - [0 1 2 3]</tt><br>
 <img class="pixelated skip-img" src="img/0_skip.png">
 <img class="pixelated both-img" src="img/0_both.png">
@@ -135,7 +135,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/1_skip.png">
 <img class="pixelated both-img" src="img/1_both.png">
 </div>
-<div class="col self_mirror">
+<div class="col self_mirror save_count">
 <tt><b>2</b> - [0 2 1 3]</tt><br>
 <img class="pixelated skip-img" src="img/2_skip.png">
 <img class="pixelated both-img" src="img/2_both.png">
@@ -160,7 +160,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/6_skip.png">
 <img class="pixelated both-img" src="img/6_both.png">
 </div>
-<div class="col trivial_two time_symmetricale self_mirror">
+<div class="col time_symmetricale self_mirror save_count">
 <tt><b>7</b> - [1 0 3 2]</tt><br>
 <img class="pixelated skip-img" src="img/7_skip.png">
 <img class="pixelated both-img" src="img/7_both.png">
@@ -175,7 +175,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/9_skip.png">
 <img class="pixelated both-img" src="img/9_both.png">
 </div>
-<div class="col self_mirror">
+<div class="col self_mirror save_count">
 <tt><b>10</b> - [1 3 0 2]</tt><br>
 <img class="pixelated skip-img" src="img/10_skip.png">
 <img class="pixelated both-img" src="img/10_both.png">
@@ -190,7 +190,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/12_skip.png">
 <img class="pixelated both-img" src="img/12_both.png">
 </div>
-<div class="col self_mirror">
+<div class="col self_mirror save_count">
 <tt><b>13</b> - [2 0 3 1]</tt><br>
 <img class="pixelated skip-img" src="img/13_skip.png">
 <img class="pixelated both-img" src="img/13_both.png">
@@ -205,7 +205,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/15_skip.png">
 <img class="pixelated both-img" src="img/15_both.png">
 </div>
-<div class="col trivial_two time_symmetricale self_mirror">
+<div class="col time_symmetricale self_mirror save_count">
 <tt><b>16</b> - [2 3 0 1]</tt><br>
 <img class="pixelated skip-img" src="img/16_skip.png">
 <img class="pixelated both-img" src="img/16_both.png">
@@ -230,7 +230,7 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/20_skip.png">
 <img class="pixelated both-img" src="img/20_both.png">
 </div>
-<div class="col self_mirror">
+<div class="col self_mirror save_count">
 <tt><b>21</b> - [3 1 2 0]</tt><br>
 <img class="pixelated skip-img" src="img/21_skip.png">
 <img class="pixelated both-img" src="img/21_both.png">
@@ -240,24 +240,40 @@ document.getElementById('img_intermediate').addEventListener('change', function(
 <img class="pixelated skip-img" src="img/22_skip.png">
 <img class="pixelated both-img" src="img/22_both.png">
 </div>
-<div class="col trivial trivial_two time_symmetricale self_mirror">
+<div class="col trivial time_symmetricale self_mirror save_count">
 <tt><b>23</b> - [3 2 1 0]</tt><br>
 <img class="pixelated skip-img" src="img/23_skip.png">
 <img class="pixelated both-img" src="img/23_both.png">
 </div>
 
+
+
+
 </div>
 
 <div class="container">
-<img src="svg/1.svg">
-<img src="svg/2.svg">
 <img src="svg/3.svg">
 <img src="svg/4.svg">
 <img src="svg/5.svg">
+<img src="svg/6.svg">
+<img src="svg/7.svg">
+<img src="svg/8.svg">
+</div>
+
+<div class="container">
+<img src="svg/9.svg">
+<img src="svg/10.svg">
+<img src="svg/11.svg">
+<img src="svg/12.svg">
+</div>
+
+<div class="container">
+<img src="svg/13.svg">
+<img src="svg/14.svg">
+<img src="svg/15.svg">
+<img src="svg/16.svg">
 </div>
 
 <img src="svg/commute.svg"><br>
-
-<img src="svg/commute_2.svg">
 
 </center>

@@ -1,5 +1,7 @@
 use rand::prelude::*;
 use std::fmt;
+use std::io::prelude::*;
+use std::process::Command;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct Block(u8);
@@ -22,6 +24,11 @@ impl Block {
     fn invert(self) -> Block {
         let (a, b) = self.get();
         Block::new(!a, !b)
+    }
+
+    fn mirror(self) -> Block {
+        let (a, b) = self.get();
+        Block::new(b, a)
     }
 }
 
@@ -71,7 +78,17 @@ impl Rule {
         let mut result = [Block(0); 4];
         #[allow(clippy::needless_range_loop)]
         for i in 0..4 {
-            result[i] = self.0[i].invert();
+            result[Block(i as u8).invert().0 as usize] = self.0[i].invert();
+        }
+        Rule(result)
+    }
+
+    fn invert_half_color(&self) -> Rule {
+        let mut result = [Block(0); 4];
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..4 {
+            result[Block(i as u8).invert().0 as usize] = self.0[i];
+            //result[i] = self.0[i].invert();
         }
         Rule(result)
     }
@@ -79,11 +96,20 @@ impl Rule {
     fn mirror(&self) -> Rule {
         let mut result = [Block(0); 4];
         for i in 0..4 {
-            let (a, b) = Block(i).get();
-            let (c, d) = self.0[i as usize].get();
-            result[Block::new(b, a).0 as usize] = Block::new(d, c);
+            result[Block(i as u8).mirror().0 as usize] = self.0[i].mirror();
         }
         Rule(result)
+    }
+
+    fn strange_change(&self) -> Rule {
+        let mut result = *self;
+        result.0.swap(0, 1);
+        result.0.swap(2, 3);
+
+        // result[self.0[i].0 as usize] = Block(i as u8).mirror(); // связывает несвязуемое, то есть 0 с 2. Такое не очень надо
+        // result[Block(i as u8).invert().0 as usize] = self.0[i].mirror(); // тоже, только 0 с 21
+
+        result
     }
 }
 
@@ -98,15 +124,6 @@ impl Rule {
     fn is_preserve(&self, array: &[bool], copy: &mut Vec<bool>) -> bool {
         copy_arr(array, copy);
 
-        self.full_step(copy);
-
-        array == copy
-    }
-
-    fn is_preserve_two(&self, array: &[bool], copy: &mut Vec<bool>) -> bool {
-        copy_arr(array, copy);
-
-        self.full_step(copy);
         self.full_step(copy);
 
         array == copy
@@ -142,6 +159,14 @@ impl Rule {
         mirror(copy2);
 
         copy1 == copy2
+    }
+
+    fn is_save_count(&self, array: &[bool], copy: &mut Vec<bool>) -> bool {
+        copy_arr(array, copy);
+
+        self.full_step(copy);
+
+        array.iter().filter(|x| **x).count() == array.iter().filter(|x| **x).count()
     }
 }
 
@@ -358,11 +383,6 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>, copy2: &mut
             } else {
                 ""
             },
-            if i.is_preserve_two(&array, copy1) {
-                " trivial_two"
-            } else {
-                ""
-            },
             if i.is_time_symmetrical(&array, copy1, copy2) {
                 " time_symmetricale"
             } else {
@@ -370,6 +390,11 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>, copy2: &mut
             },
             if i.is_self_mirrored(&array, copy1, copy2) {
                 " self_mirror"
+            } else {
+                ""
+            },
+            if i.is_self_mirrored(&array, copy1, copy2) {
+                " save_count"
             } else {
                 ""
             }
@@ -395,67 +420,109 @@ fn main() {
 
     let rules = get_rules();
 
-    enum ShowFilter {
-        NotShow(Vec<usize>),
-        Show(Vec<usize>),
-        ShowWithBlue(Vec<usize>),
+    struct ShowFilter {
+        arr: Vec<usize>,
+        filter_type: bool,
+        show_purple: bool,
+        show_cyan: bool,
     }
-    use ShowFilter::*;
     impl ShowFilter {
         fn filter(&self, n: usize) -> bool {
-            match self {
-                NotShow(arr) => arr.iter().all(|x| *x != n),
-                Show(arr) | ShowWithBlue(arr) => arr.iter().any(|x| *x == n),
+            if self.filter_type {
+                self.arr.iter().all(|x| *x != n)
+            } else {
+                self.arr.iter().any(|x| *x == n)
             }
         }
-        fn should_blue(&self) -> bool {
-            matches!(self, ShowWithBlue(_))
+
+        fn not_show(arr: Vec<usize>, show_purple: bool, show_cyan: bool) -> Self {
+            Self {
+                arr,
+                filter_type: true,
+                show_purple,
+                show_cyan,
+            }
+        }
+
+        fn show(arr: Vec<usize>, show_purple: bool, show_cyan: bool) -> Self {
+            Self {
+                arr,
+                filter_type: false,
+                show_purple,
+                show_cyan,
+            }
         }
     }
 
-    for show in [
-        NotShow(vec![0, 7, 16, 23]),
-        Show(vec![1, 5, 6, 14]),
-        Show(vec![2, 10, 13, 21]),
-        Show(vec![3, 4, 8, 12]),
-        Show(vec![9, 17, 18, 22]),
-        Show(vec![11, 15, 19, 20]),
-        ShowWithBlue(vec![3, 4, 8, 11, 12, 15, 19, 20]),
-    ] {
-        println!("-------------------------------\nRelations graph:");
+    for (n, show) in [
+        ShowFilter::not_show(vec![], false, false),
+        ShowFilter::not_show(vec![], true, false),
+        ShowFilter::not_show(vec![], true, true),
+        // 3..8
+        ShowFilter::show(vec![0, 23, 7, 16], false, false),
+        ShowFilter::show(vec![2, 21, 10, 13], false, false),
+        ShowFilter::show(vec![1, 6, 5, 14], false, false),
+        ShowFilter::show(vec![3, 4, 8, 12], false, false),
+        ShowFilter::show(vec![9, 17, 18, 22], false, false),
+        ShowFilter::show(vec![11, 15, 19, 20], false, false),
+        // 9..12
+        ShowFilter::show(vec![0, 23, 7, 16], true, false),
+        ShowFilter::show(vec![2, 21, 10, 13], true, false),
+        ShowFilter::show(vec![1, 6, 5, 14, 9, 17, 18, 22], true, false),
+        ShowFilter::show(vec![11, 15, 19, 20, 3, 4, 8, 12], true, false),
+        // 13..16
+        ShowFilter::show(vec![0, 23, 7, 16], true, true),
+        ShowFilter::show(vec![2, 21, 10, 13], true, true),
+        ShowFilter::show(vec![1, 6, 5, 14, 9, 17, 18, 22], true, true),
+        ShowFilter::show(vec![11, 15, 19, 20, 3, 4, 8, 12], true, true),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut file = std::fs::File::create("temp.dot").unwrap();
 
-        println!("digraph G {{\nedge [arrowhead=none];");
+        write!(file, "digraph G {{\nedge [arrowhead=none];").unwrap();
         for (ni, i) in rules.iter().enumerate().filter(|(ni, _)| show.filter(*ni)) {
-            for (nj, j) in rules
-                .iter()
-                .enumerate()
-                .skip(ni)
-                .filter(|(nj, _)| show.filter(*nj))
-            {
-                if i.is_time_invert_by(j, &array, &mut copy1) {
-                    println!("{} -> {};", ni, nj);
-                }
-                if i.is_color_invert_by(j, &array, &mut copy1, &mut copy2) {
-                    println!("{} -> {} [color=red];", ni, nj);
-                }
-                if i.is_mirrored_by(j, &array, &mut copy1, &mut copy2) {
-                    println!("{} -> {} [color=green];", ni, nj);
-                }
-                if i.is_commute_with(j, &array, &mut copy1, &mut copy2)
-                    && ni != nj
-                    && show.should_blue()
-                {
-                    println!("{} -> {} [color=blue];", ni, nj);
-                }
+            let n = get_number(&rules, &i.invert_time());
+            if ni <= n {
+                write!(file, "{} -> {};", ni, n).unwrap();
+            }
+
+            let n = get_number(&rules, &i.invert_color());
+            if ni <= n {
+                write!(file, "{} -> {} [color=red];", ni, n).unwrap();
+            }
+
+            let n = get_number(&rules, &i.mirror());
+            if ni <= n {
+                write!(file, "{} -> {} [color=green];", ni, n).unwrap();
+            }
+
+            let n = get_number(&rules, &i.invert_half_color());
+            if ni <= n && show.show_purple {
+                write!(file, "{} -> {} [color=purple];", ni, n).unwrap();
+            }
+
+            let n = get_number(&rules, &i.strange_change());
+            if ni <= n && show.show_cyan {
+                write!(file, "{} -> {} [color=cyan];", ni, n).unwrap();
             }
         }
-        println!("}}");
+        write!(file, "}}").unwrap();
+        drop(file);
+
+        Command::new("dot")
+            .args(&["-Tsvg", "temp.dot", "-o", &format!("svg/{}.svg", n)])
+            .output()
+            .unwrap();
+
+        Command::new("rm").args(&["temp.dot"]).output().unwrap();
     }
 
-    let show = NotShow(vec![0, 7, 16, 23]);
+    let show = ShowFilter::not_show(vec![0, 7, 16, 23], false, false);
 
-    println!("-------------------------------\nCommute graph:");
-
+    let mut file = std::fs::File::create("temp.dot").unwrap();
+    write!(file, "digraph G {{\nedge [arrowhead=none];").unwrap();
     for (ni, i) in rules.iter().enumerate().filter(|(ni, _)| show.filter(*ni)) {
         for (nj, j) in rules
             .iter()
@@ -464,33 +531,23 @@ fn main() {
             .filter(|(nj, _)| show.filter(*nj))
         {
             if i.is_commute_with(j, &array, &mut copy1, &mut copy2) && ni != nj {
-                println!("{} -> {};", ni, nj);
+                write!(file, "{} -> {};", ni, nj).unwrap();
             }
         }
     }
+    write!(file, "}}").unwrap();
+    drop(file);
 
-    println!("-------------------------------\nRule generation graph:");
+    Command::new("dot")
+        .args(&["-Tsvg", "temp.dot", "-o", "svg/commute.svg"])
+        .output()
+        .unwrap();
 
-    for (ni, i) in rules.iter().enumerate().filter(|(ni, _)| show.filter(*ni)) {
-        let n = get_number(&rules, &i.invert_time());
-        if n <= ni {
-            println!("{} -> {};", ni, n);
-        }
-
-        let n = get_number(&rules, &i.invert_color());
-        if n <= ni {
-            println!("{} -> {} [color=red];", ni, n);
-        }
-
-        let n = get_number(&rules, &i.mirror());
-        if n <= ni {
-            println!("{} -> {} [color=green];", ni, n);
-        }
-    }
+    Command::new("rm").args(&["temp.dot"]).output().unwrap();
 
     println!("-------------------------------\nhtml:");
 
     print_html(&rules, &array, &mut copy1, &mut copy2);
 
-    draw_all_images(&rules, &array, &mut copy1);
+    // draw_all_images(&rules, &array, &mut copy1);
 }
