@@ -164,6 +164,10 @@ impl Rule {
         *self == self.invert_time()
     }
 
+    fn is_anti_time_symmetrical(&self) -> bool {
+        self.invert_color() == self.invert_time()
+    }
+
     fn is_self_inverse(&self) -> bool {
         *self == self.invert_color()
     }
@@ -388,7 +392,7 @@ fn get_number(rules: &[Rule], rule: &Rule) -> usize {
 fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
     for (ni, i) in rules.iter().enumerate() {
         println!(
-            "<div class=\"automata-col{}{}{}{}{}{}\">",
+            "<div class=\"automata-col{}{}{}{}{}{}{}\">",
             if i.is_preserve(&array, copy1) {
                 " trivial"
             } else {
@@ -401,6 +405,11 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
             },
             if i.is_time_symmetrical() {
                 " time_symmetricale"
+            } else {
+                ""
+            },
+            if i.is_anti_time_symmetrical() {
+                " anti_time_symmetricale"
             } else {
                 ""
             },
@@ -436,7 +445,7 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
 
 fn main() {
     let mut rng = rand::thread_rng();
-    let array = (0..50).map(|_| rng.gen::<bool>()).collect::<Vec<_>>();
+    let array = (0..10000).map(|_| rng.gen::<bool>()).collect::<Vec<_>>();
     let mut copy1 = array.clone();
     let mut copy2 = array.clone();
 
