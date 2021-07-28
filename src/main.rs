@@ -87,8 +87,7 @@ impl Rule {
         let mut result = [Block(0); 4];
         #[allow(clippy::needless_range_loop)]
         for i in 0..4 {
-            result[Block(i as u8).invert().0 as usize] = self.0[i];
-            //result[i] = self.0[i].invert();
+            result[i] = self.0[i].invert();
         }
         Rule(result)
     }
@@ -103,8 +102,13 @@ impl Rule {
 
     fn strange_change(&self) -> Rule {
         let mut result = *self;
+        // let mut result = self.invert_color();
+        // let mut result = self.mirror();
+        // let mut result = self.invert_half_color();
         result.0.swap(0, 1);
         result.0.swap(2, 3);
+        // result.0.swap(0, 2);
+        // result.0.swap(1, 3);
         result
 
         // let mut result = [Block(0); 4];
@@ -147,36 +151,25 @@ impl Rule {
         array == copy
     }
 
-    fn is_time_symmetrical(
-        &self,
-        array: &[bool],
-        copy1: &mut Vec<bool>,
-        copy2: &mut Vec<bool>,
-    ) -> bool {
-        copy_arr(&array, copy1);
-        copy_arr(&array, copy2);
+    fn is_preserve_two_steps(&self, array: &[bool], copy: &mut Vec<bool>) -> bool {
+        copy_arr(array, copy);
 
-        self.full_step(copy1);
-        self.invert_time().full_step_like_invert(copy2);
+        self.full_step(copy);
+        self.full_step(copy);
 
-        copy1 == copy2
+        array == copy
     }
 
-    fn is_self_mirrored(
-        &self,
-        array: &[bool],
-        copy1: &mut Vec<bool>,
-        copy2: &mut Vec<bool>,
-    ) -> bool {
-        copy_arr(&array, copy1);
-        copy_arr(&array, copy2);
+    fn is_time_symmetrical(&self) -> bool {
+        *self == self.invert_time()
+    }
 
-        self.full_step(copy1);
-        mirror(copy2);
-        self.full_step(copy2);
-        mirror(copy2);
+    fn is_self_inverse(&self) -> bool {
+        *self == self.invert_color()
+    }
 
-        copy1 == copy2
+    fn is_self_mirrored(&self) -> bool {
+        *self == self.mirror()
     }
 
     fn is_save_count(&self, array: &[bool], copy: &mut Vec<bool>) -> bool {
@@ -184,7 +177,7 @@ impl Rule {
 
         self.full_step(copy);
 
-        array.iter().filter(|x| **x).count() == array.iter().filter(|x| **x).count()
+        array.iter().filter(|x| **x).count() == copy.iter().filter(|x| **x).count()
     }
 }
 
@@ -392,26 +385,36 @@ fn get_number(rules: &[Rule], rule: &Rule) -> usize {
     rules.iter().position(|x| x == rule).unwrap()
 }
 
-fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>, copy2: &mut Vec<bool>) {
+fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
     for (ni, i) in rules.iter().enumerate() {
         println!(
-            "<div class=\"col{}{}{}{}\">",
+            "<div class=\"automata-col{}{}{}{}{}{}\">",
             if i.is_preserve(&array, copy1) {
                 " trivial"
             } else {
                 ""
             },
-            if i.is_time_symmetrical(&array, copy1, copy2) {
+            if i.is_preserve_two_steps(&array, copy1) {
+                " trivial_two"
+            } else {
+                ""
+            },
+            if i.is_time_symmetrical() {
                 " time_symmetricale"
             } else {
                 ""
             },
-            if i.is_self_mirrored(&array, copy1, copy2) {
+            if i.is_self_mirrored() {
                 " self_mirror"
             } else {
                 ""
             },
-            if i.is_self_mirrored(&array, copy1, copy2) {
+            if i.is_self_inverse() {
+                " self_inverse"
+            } else {
+                ""
+            },
+            if i.is_save_count(&array, copy1) {
                 " save_count"
             } else {
                 ""
@@ -419,14 +422,14 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>, copy2: &mut
         );
         println!("<span class=\"automata-name\"><b>{}</b></span><br>", ni);
         println!(
-            "<img class=\"pixelated skip-img\" src=\"img/{}_skip.png\">",
+            "<img class=\"pixelated skip-img\" src=\"/assets/invertible-automata/img/{}_skip.png\">",
             ni
         );
         println!(
-            "<img class=\"pixelated both-img\" src=\"img/{}_both.png\">",
+            "<img class=\"pixelated both-img\" src=\"/assets/invertible-automata/img/{}_both.png\">",
             ni
         );
-        println!("<br><span class=\"automata-name\">{}</span>", i);
+        println!("<span class=\"automata-name\">{}</span>", i);
         println!("</div>");
     }
 }
@@ -573,7 +576,7 @@ fn main() {
 
     println!("-------------------------------\nhtml:");
 
-    print_html(&rules, &array, &mut copy1, &mut copy2);
+    print_html(&rules, &array, &mut copy1);
 
     // draw_all_images(&rules, &array, &mut copy1);
 }
