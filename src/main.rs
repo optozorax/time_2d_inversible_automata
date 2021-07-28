@@ -105,11 +105,29 @@ impl Rule {
         let mut result = *self;
         result.0.swap(0, 1);
         result.0.swap(2, 3);
-
-        // result[self.0[i].0 as usize] = Block(i as u8).mirror(); // связывает несвязуемое, то есть 0 с 2. Такое не очень надо
-        // result[Block(i as u8).invert().0 as usize] = self.0[i].mirror(); // тоже, только 0 с 21
-
         result
+
+        // let mut result = [Block(0); 4];
+        // for i in 0..4 {
+        //     // result[self.0[i].mirror().0 as usize] = Block(i as u8).mirror(); // ничего не даёт
+        //     // result[self.0[i].invert().0 as usize] = Block(i as u8).invert(); // ничего не даёт
+        //
+        //     // result[self.0[i].mirror().0 as usize] = Block(i as u8).invert(); // 0 - 21
+        //     // result[self.0[i].invert().0 as usize] = Block(i as u8).mirror(); // 0 - 21
+        //
+        //     // result[self.0[i].mirror().0 as usize] = Block(i as u8); // 0 - 2
+        //     // result[self.0[i].invert().0 as usize] = Block(i as u8); // ничего не даёт
+        //
+        //     // result[self.0[i].0 as usize] = Block(i as u8).mirror(); // 0 - 2
+        //     // result[self.0[i].0 as usize] = Block(i as u8).invert(); // ничего не даёт
+        //
+        //     // result[Block(i as u8).invert().0 as usize] = self.0[i].mirror(); // 0 - 21
+        //     // result[Block(i as u8).mirror().0 as usize] = self.0[i].invert(); // 0 - 21
+        //
+        //     // result[Block(i as u8).mirror().0 as usize] = self.0[i]; // 0 - 2
+        //     // result[Block(i as u8).invert().0 as usize] = self.0[i]; // ничего не даёт
+        // }
+        // Rule(result)
     }
 }
 
@@ -399,7 +417,7 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>, copy2: &mut
                 ""
             }
         );
-        println!("<tt><b>{}</b> - {}</tt><br>", ni, i);
+        println!("<span class=\"automata-name\"><b>{}</b></span><br>", ni);
         println!(
             "<img class=\"pixelated skip-img\" src=\"img/{}_skip.png\">",
             ni
@@ -408,6 +426,7 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>, copy2: &mut
             "<img class=\"pixelated both-img\" src=\"img/{}_both.png\">",
             ni
         );
+        println!("<br><span class=\"automata-name\">{}</span>", i);
         println!("</div>");
     }
 }
@@ -519,31 +538,38 @@ fn main() {
         Command::new("rm").args(&["temp.dot"]).output().unwrap();
     }
 
-    let show = ShowFilter::not_show(vec![0, 7, 16, 23], false, false);
-
-    let mut file = std::fs::File::create("temp.dot").unwrap();
-    write!(file, "digraph G {{\nedge [arrowhead=none];").unwrap();
-    for (ni, i) in rules.iter().enumerate().filter(|(ni, _)| show.filter(*ni)) {
-        for (nj, j) in rules
-            .iter()
-            .enumerate()
-            .skip(ni)
-            .filter(|(nj, _)| show.filter(*nj))
-        {
-            if i.is_commute_with(j, &array, &mut copy1, &mut copy2) && ni != nj {
-                write!(file, "{} -> {};", ni, nj).unwrap();
+    for (n, show) in [
+        ShowFilter::show(vec![2, 10, 13, 21], false, false),
+        ShowFilter::show(vec![3, 11, 12, 20], false, false),
+        ShowFilter::show(vec![4, 8, 15, 19], false, false),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut file = std::fs::File::create("temp.dot").unwrap();
+        write!(file, "digraph G {{\nedge [arrowhead=none];").unwrap();
+        for (ni, i) in rules.iter().enumerate().filter(|(ni, _)| show.filter(*ni)) {
+            for (nj, j) in rules
+                .iter()
+                .enumerate()
+                .skip(ni)
+                .filter(|(nj, _)| show.filter(*nj))
+            {
+                if i.is_commute_with(j, &array, &mut copy1, &mut copy2) && ni != nj {
+                    write!(file, "{} -> {};", ni, nj).unwrap();
+                }
             }
         }
+        write!(file, "}}").unwrap();
+        drop(file);
+
+        Command::new("dot")
+            .args(&["-Tsvg", "temp.dot", "-o", &format!("svg/commute{}.svg", n)])
+            .output()
+            .unwrap();
+
+        Command::new("rm").args(&["temp.dot"]).output().unwrap();
     }
-    write!(file, "}}").unwrap();
-    drop(file);
-
-    Command::new("dot")
-        .args(&["-Tsvg", "temp.dot", "-o", "svg/commute.svg"])
-        .output()
-        .unwrap();
-
-    Command::new("rm").args(&["temp.dot"]).output().unwrap();
 
     println!("-------------------------------\nhtml:");
 
