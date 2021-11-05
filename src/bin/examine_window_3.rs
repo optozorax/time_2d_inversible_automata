@@ -71,7 +71,7 @@ mod tests {
             0b010_001_100_011_110_101_111
         );
 
-        let x = repeat(0b01, 2);
+        let x = repeat_bit(0b01, 2);
         assert_eq!(x, rotate_right(rotate_left(x, 63, 1), 63, 1));
         assert_eq!(x, rotate_left(rotate_right(x, 63, 1), 63, 1));
 

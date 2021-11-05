@@ -49,3 +49,14 @@ impl Random {
         Self { state: seed }
     }
 }
+
+pub const fn repeat_bit(num: u64, size: u8) -> u64 {
+    let mut ans = 0u64;
+    let mut i = 0;
+    let max = 64 / size;
+    while i < max {
+        ans |= num << (i * size);
+        i += 1;
+    }
+    ans
+}
