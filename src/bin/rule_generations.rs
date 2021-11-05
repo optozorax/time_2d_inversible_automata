@@ -2,6 +2,7 @@ use rand::prelude::*;
 use std::fmt;
 use std::io::prelude::*;
 use std::process::Command;
+use time_2d_inversible_automata::*;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct Block(u8);
@@ -195,8 +196,8 @@ impl Rule {
         copy1: &mut Vec<bool>,
         copy2: &mut Vec<bool>,
     ) -> bool {
-        copy_arr(&array, copy1);
-        copy_arr(&array, copy2);
+        copy_arr(array, copy1);
+        copy_arr(array, copy2);
 
         self.full_step(copy1);
         other.full_step(copy1);
@@ -209,7 +210,7 @@ impl Rule {
 
     /// Other can be invert rule for self
     fn is_time_invert_by(&self, other: &Rule, array: &[bool], copy1: &mut Vec<bool>) -> bool {
-        copy_arr(&array, copy1);
+        copy_arr(array, copy1);
 
         self.full_step(copy1);
         other.full_step_like_invert(copy1);
@@ -224,8 +225,8 @@ impl Rule {
         copy1: &mut Vec<bool>,
         copy2: &mut Vec<bool>,
     ) -> bool {
-        copy_arr(&array, copy1);
-        copy_arr(&array, copy2);
+        copy_arr(array, copy1);
+        copy_arr(array, copy2);
 
         self.full_step(copy1);
 
@@ -244,8 +245,8 @@ impl Rule {
         copy1: &mut Vec<bool>,
         copy2: &mut Vec<bool>,
     ) -> bool {
-        copy_arr(&array, copy1);
-        copy_arr(&array, copy2);
+        copy_arr(array, copy1);
+        copy_arr(array, copy2);
 
         self.full_step(copy1);
 
@@ -307,29 +308,6 @@ fn simulate_skip(rule: &Rule, array: &mut Vec<bool>, steps: usize) -> Vec<Vec<bo
     result
 }
 
-fn draw_image(filename: &str, array: Vec<Vec<bool>>) {
-    use std::fs::File;
-    use std::io::BufWriter;
-    use std::path::Path;
-
-    let path = Path::new(filename);
-    let file = File::create(path).unwrap();
-    let w = BufWriter::new(file);
-
-    let mut encoder = png::Encoder::new(w, array[0].len() as u32, array.len() as u32);
-    encoder.set_color(png::ColorType::Grayscale);
-    encoder.set_depth(png::BitDepth::Eight);
-    let mut writer = encoder.write_header().unwrap();
-
-    let data = array
-        .iter()
-        .map(|x| x.iter())
-        .flatten()
-        .map(|x| (!*x) as u8 * 255)
-        .collect::<Vec<u8>>();
-    writer.write_image_data(&data).unwrap();
-}
-
 fn get_rules() -> Vec<Rule> {
     let mut rule_base = [0, 1, 2, 3];
     let mut rules = vec![];
@@ -356,17 +334,11 @@ fn mirror(a: &mut [bool]) {
 
 fn draw_all_images(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
     for (ni, i) in rules.iter().enumerate() {
-        copy_arr(&array, copy1);
-        draw_image(
-            &format!("img/{}_skip.png", ni),
-            simulate_skip(&i, copy1, 50),
-        );
+        copy_arr(array, copy1);
+        draw_image(&format!("img/{}_skip.png", ni), simulate_skip(i, copy1, 50));
 
-        copy_arr(&array, copy1);
-        draw_image(
-            &format!("img/{}_both.png", ni),
-            simulate_both(&i, copy1, 50),
-        );
+        copy_arr(array, copy1);
+        draw_image(&format!("img/{}_both.png", ni), simulate_both(i, copy1, 50));
     }
 }
 
@@ -393,12 +365,12 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
     for (ni, i) in rules.iter().enumerate() {
         println!(
             "<div class=\"automata-col{}{}{}{}{}{}{}\">",
-            if i.is_preserve(&array, copy1) {
+            if i.is_preserve(array, copy1) {
                 " trivial"
             } else {
                 ""
             },
-            if i.is_preserve_two_steps(&array, copy1) {
+            if i.is_preserve_two_steps(array, copy1) {
                 " trivial_two"
             } else {
                 ""
@@ -423,7 +395,7 @@ fn print_html(rules: &[Rule], array: &[bool], copy1: &mut Vec<bool>) {
             } else {
                 ""
             },
-            if i.is_save_count(&array, copy1) {
+            if i.is_save_count(array, copy1) {
                 " save_count"
             } else {
                 ""

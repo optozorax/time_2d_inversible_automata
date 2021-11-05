@@ -1,13 +1,13 @@
 /*! # Быстрое вычисление обратимых 1D автоматов.
- * 
+ *
  * Здесь в первую очередь находится код для быстрого вычислнеия 1D обратимых автоматов на Margolus Neighborhood. Делается это за счёт битовых операций, итоговый ассемблер получается космически маленьким и быстрым.
- * 
+ *
  * Здесь вычисляется несколько вещей касательно обратимых 1D автоматов:
  * * Период повторения рандомных и повторяющихся паттернов
  * * Наличие глайдеров в пустом поле и в повторяющихся паттернах
- * 
+ *
  * Результаты такие, что период для случайных это константа (192 или 64), а глайдеров особо нету, в автомате 1 так точно, а в остальных они ну тупо состоят из одной клетки и могут сразу пускать глайдеров в две стороны.
- * 
+ *
  * Я писал об этом начиная отсюда: https://t.me/automatter/367
  */
 
@@ -157,7 +157,10 @@ fn find_gliders(rule: &(u64, u64, u64, u64)) {
     }
     println!("example of gliders: {:?}", gliders_example);
     for ((offset, count), x) in gliders_example {
-        println!("\nglider with offset {} and period {} pattern:", offset, count);
+        println!(
+            "\nglider with offset {} and period {} pattern:",
+            offset, count
+        );
         show_field(x, rule, count.into());
     }
 }
@@ -174,7 +177,10 @@ fn find_gliders_in_ether(rule: &(u64, u64, u64, u64)) {
     });
     println!("example of gliders in ether: {:?}", gliders_example);
     for ((offset, count), x) in gliders_example {
-        println!("\nglider in ether with offset {} and period {} pattern:", offset, count);
+        println!(
+            "\nglider in ether with offset {} and period {} pattern:",
+            offset, count
+        );
         show_field(x, rule, count.into());
     }
 }

@@ -9,6 +9,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
+name = "autocfg"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -57,6 +63,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
 name = "libc"
 version = "0.2.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -69,6 +81,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791daaae1ed6889560f8c4359194f56648355540573244a5448a83ba1ecc7435"
 dependencies = [
  "adler32",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f6f7833f2cbf2360a6cfd58cd41a53aa7a90bd4c202f5b1c7dd2ed73c57b2c3"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-integer"
+version = "0.1.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
+dependencies = [
+ "autocfg",
+ "num-traits",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
+name = "permutation_string"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "num-bigint",
+ "thiserror",
 ]
 
 [[package]]
@@ -88,6 +139,24 @@ name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
+
+[[package]]
+name = "proc-macro2"
+version = "1.0.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
+dependencies = [
+ "unicode-xid",
+]
+
+[[package]]
+name = "quote"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38bc8cc6a5f2e3655e0899c1b848643b2562f853f114bfec7be120678e3ace05"
+dependencies = [
+ "proc-macro2",
+]
 
 [[package]]
 name = "rand"
@@ -130,12 +199,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "syn"
+version = "1.0.81"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2afee18b8beb5a596ecb4a2dce128c719b4ba399d34126b9e4396e3f9860966"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-xid",
+]
+
+[[package]]
+name = "thiserror"
+version = "1.0.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "854babe52e4df1653706b98fcfc05843010039b406875930a70e4d9644e5c417"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa32fd3f627f367fe16f893e2597ae3c05020f8bba2666a4e6ea73d377e5714b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "time_2d_inversible_automata"
 version = "0.1.0"
 dependencies = [
+ "permutation_string",
  "png",
  "rand",
 ]
+
+[[package]]
+name = "unicode-xid"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 
 [[package]]
 name = "wasi"
