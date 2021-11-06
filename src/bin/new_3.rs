@@ -1,9 +1,15 @@
 #![allow(clippy::unusual_byte_groupings)]
 
-use std::collections::HashMap;
-use std::collections::BTreeSet;
-use time_2d_inversible_automata::*;
+use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 use permutation_string::*;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::fs::File;
+use std::io::prelude::*;
+use time_2d_inversible_automata::*;
 
 const PAT0: u64 = repeat_bit(0b000, 3);
 const PAT1: u64 = repeat_bit(0b001, 3);
@@ -32,7 +38,6 @@ pub struct Field {
     val: u64,
     size: u32,
 }
-
 
 impl Rule {
     pub const RULE0: Rule = Rule([PAT0, PAT1, PAT2, PAT3, PAT4, PAT5, PAT6, PAT7]);
@@ -113,7 +118,7 @@ impl Rule {
             result.push(x.to_bools(dupl));
         }
         let name = format!("img/{}_{}_{}_{}_{}.png", x_start, x.size, steps, dupl, ni);
-        draw_image(&name, result);
+        draw_image(&format!("data/{}", name), result);
         name
     }
 }
@@ -121,11 +126,9 @@ impl Rule {
 impl Field {
     pub fn new(val: u64, size: u32) -> Self {
         assert!(size % 3 == 0);
+        assert!(size <= 64);
         assert!(val == (val & !(ALL_ONES << size)));
-        Self {
-            val,
-            size,
-        }
+        Self { val, size }
     }
 
     pub fn rotate_left(mut self, mut count: u32) -> Self {
@@ -144,6 +147,14 @@ impl Field {
         self
     }
 
+    pub fn rotate(self, count: i32) -> Self {
+        if count < 0 {
+            self.rotate_left((-count) as u32)
+        } else {
+            self.rotate_right(count as u32)
+        }
+    }
+
     pub fn to_bools(&self, dupl: u64) -> Vec<bool> {
         let size = self.size as usize;
         let mut result = vec![false; size];
@@ -157,8 +168,8 @@ impl Field {
         result2
     }
 
-    pub fn occupied_size(&self) -> u32 {
-        occupied_size(self.val)
+    pub fn occupied_size3(&self) -> u32 {
+        occupied_size3(self.val)
     }
 
     pub fn minimize(mut self) -> Self {
@@ -171,7 +182,7 @@ impl Field {
     }
 
     pub fn centralize(self) -> Self {
-        let mut offset = (self.size - self.occupied_size()) / 2;
+        let mut offset = (self.size - self.occupied_size3()) / 2;
         offset -= offset % 3;
         self.rotate_left(offset)
     }
@@ -181,7 +192,7 @@ impl Field {
     }
 }
 
-pub fn occupied_size(mut x: u64) -> u32 {
+pub fn occupied_size3(mut x: u64) -> u32 {
     let mut count = 0;
     while x != 0 {
         x >>= 3;
@@ -190,12 +201,26 @@ pub fn occupied_size(mut x: u64) -> u32 {
     count
 }
 
-pub fn print_col(ni: u64, img: &str, info: &str) {
-    println!("<div class=\"automata-col\">",);
-    println!("<span class=\"automata-name\"><b>{}</b></span><br>", ni);
-    println!("<img class=\"pixelated\" src=\"{}\">", img);
-    println!("<br><span class=\"automata-name\">{}</span>", info);
-    println!("</div>");
+pub fn occupied_size(mut x: u64) -> u32 {
+    let mut count = 0;
+    while x != 0 {
+        x >>= 1;
+        count += 1;
+    }
+    count
+}
+
+pub fn print_col(file: &mut File, ni: u64, img: &str, info: &str) {
+    writeln!(file, "<div class=\"automata-col\">",).unwrap();
+    writeln!(
+        file,
+        "<span class=\"automata-name\"><b>{}</b></span><br>",
+        ni
+    )
+    .unwrap();
+    writeln!(file, "<img class=\"pixelated\" src=\"{}\">", img).unwrap();
+    writeln!(file, "<br><span class=\"automata-name\">{}</span>", info).unwrap();
+    writeln!(file, "</div>").unwrap();
 }
 
 // находит период и смещение глайдера, осциллятора или статичной картинки
@@ -203,7 +228,7 @@ fn period(mut x: Field, rule: &Rule) -> Option<(u64, i32)> {
     let y = x;
     for period in 1..60 {
         rule.steps(&mut x);
-        for offset in 0..3 {
+        for offset in 0..4 {
             if x.rotate_left(offset * 3) == y {
                 return Some((period, -(offset as i32)));
             }
@@ -213,6 +238,14 @@ fn period(mut x: Field, rule: &Rule) -> Option<(u64, i32)> {
         }
     }
     None
+}
+
+fn is_same_after(mut x: Field, rule: &Rule, steps: u64, offset: i32) -> bool {
+    let y = x;
+    for _ in 0..steps {
+        rule.steps(&mut x);
+    }
+    x.rotate(offset * 3) == y
 }
 
 // находит минимальное число описывающее глайдер
@@ -226,23 +259,12 @@ fn minimize2(mut x: Field, rule: &Rule, period: u64) -> Field {
     Field::new(my_min, x.size)
 }
 
-fn max_consecutive_zeros(mut x: u64) -> u32 {
-    let mut max = 0;
-    let mut count = 0;
-    while x != 0 {
-        if x & 1 == 1 {
-            max = max.max(count);
-            count = 0;
-        } else {
-            count += 1;
-        }
-        x >>= 1;
-    }
-    max
-}
-
 fn size_round3(x: u32) -> u32 {
     x / 3 + (((x % 3) != 0) as u32)
+}
+
+fn size_round2(x: u32) -> u32 {
+    x / 2 + (((x % 2) != 0) as u32)
 }
 
 fn check_reach_everything(mut x: Field, rule: &Rule, period: u64) -> bool {
@@ -308,77 +330,431 @@ fn check_reach_everything(mut x: Field, rule: &Rule, period: u64) -> bool {
     reached.val == prev_x.val
 }
 
-fn add_used(mut x: Field, period: u64, offset: i32, rule: &Rule, used: &mut HashMap<u64, (u64, i32)>) {
-    for _ in 0..period {
-        assert!(!used.contains_key(&x.val));
-        used.insert(x.val, (period, offset));
-        rule.steps(&mut x)
+// В цикличном массиве находит в каком месте начинается данный паттерн и его длину. Для этого находит нули максимального размера чтобы считать их пустым полем
+fn find_pattern_start(x: Field) -> i32 {
+    let mut my_min = x.val;
+    let mut min_offset: i32 = 0;
+
+    for i in 1..size_round2(x.size / 3) {
+        let new = x.rotate_left(i * 3);
+        if new.val < my_min {
+            my_min = new.val;
+            min_offset = -(i as i32);
+        }
+
+        let new = x.rotate_right(i * 3);
+        if new.val < my_min {
+            my_min = new.val;
+            min_offset = i as i32;
+        }
     }
-/* 
-    сначала находим максимальную штуку из 000, находим её старт и длину, соответственно мы можем найти старт и длину всего остального
-    записываем это, и записываем следующее состояние, и записываем смещение относительного прошлого состояния
- */
+
+    min_offset
 }
 
-// fn check_used(mut x: Field, period: u64, rule: &Rule, used: &mut HashMap<u64, (u64, i32)>) {
-//     // let size = size_round3(occupied_size(x));
-//     // for i in 1..=size {
-// TOOD
-/* 
-    
-    перебираем все размеры текущего паттерна
-    смотрим, если паттерн совпадает с тем что уже использовалось
-    если да, то перебираем все паттерны и смотрим, чтобы они были равны всем следующим с учётом смещения, использовать xor и rotate для паттерн матчинга
-    если мы уже прошли до конца периода и такое случилось, то всё, текующий глайдер обладает другим глайдером, он не самостоятельный
- */
-//     // }
-// }
+fn add_used(mut x: Field, period: u64, rule: &Rule, used: &mut HashMap<u64, (u64, u64, i32)>) {
+    for _ in 0..=period {
+        // assert!(!used.contains_key(&x.val));
+        let start_offset = find_pattern_start(x);
+        let prev = x;
+        rule.steps(&mut x);
+        used.insert(
+            prev.minimize().val,
+            (
+                period,
+                x.minimize().val,
+                find_pattern_start(x) - start_offset,
+            ),
+        );
+    }
+}
 
-fn main() {
-    println!("{}", BEFORE);
-    for ni in 633..634 {
-        // let ni = 633;
-        let rule = Rule::num_to_rule(ni);
-
-        let mut gliders = BTreeSet::new();
-        // let mut used: HashMap<u64, (u64, i32)> = HashMap::new(); // val, (period, offset)
-        for x in 1..100_000 {
-            let size = size_round3(occupied_size(x));
-            if let Some((period1, offset1)) = period(Field::new(x, (size + 2) * 3), &rule) {
-                if let Some((period2, offset2)) = period(Field::new(x, (size + 3) * 3), &rule) {
-                    if period1 == period2 && offset1 == offset2 {
-                        let add_size = size_round3(max_consecutive_zeros(x));
-                        let min = minimize2(Field::new(x, (size + add_size + 1) * 3), &rule, period1);
-
-                        if check_reach_everything(min, &rule, period1) {
-                            // add_used(min, period1, offset1, &rule, &mut used);
-                            gliders.insert((min.val, period1, offset1));    
-                        }
+// предполагается что x уже минимизировано
+fn check_used(
+    mut x: Field,
+    period: u64,
+    rule: &Rule,
+    used: &HashMap<u64, (u64, u64, i32)>,
+) -> bool {
+    let size = occupied_size(x.val);
+    let y = x;
+    'outer: for i in 1..=size {
+        x = y;
+        let pat = (repeat_bit(0b1, 1) & !(1 << 63)) >> (63 - i);
+        let possible_glider = x.val & pat;
+        if let Some((period_local, mut next, mut offset_local)) =
+            used.get(&possible_glider).cloned()
+        {
+            if period % period_local == 0 {
+                let mut offset = offset_local;
+                for _ in 0..period {
+                    rule.steps(&mut x);
+                    let pat = (repeat_bit(0b1, 1) & !(1 << 63)) >> (63 - occupied_size(next));
+                    let now_sub = x.rotate(offset * 3).val & pat;
+                    if now_sub != next {
+                        continue 'outer;
                     }
+
+                    let (_, b, c) = *used.get(&next).unwrap();
+                    next = b;
+                    offset_local = c;
+
+                    offset += offset_local;
+                }
+                return true;
+            }
+        }
+    }
+    false
+}
+
+// Находит всех уникальных глайдеров и осцилляторов для данного правила, перебирая все числа до max_count и переводя их в битовое представление
+fn get_gliders(rule: &Rule, max_count: u64, use_progress: bool) -> BTreeSet<(u64, u64, i32)> {
+    let mut gliders = BTreeSet::new();
+    let mut used: HashMap<u64, (u64, u64, i32)> = HashMap::new(); // val, (period, next, offset)
+    let progress = ProgressBar::new(max_count).with_style(
+        ProgressStyle::default_bar()
+            .template("[elapsed: {elapsed:>6} | remaining: {eta:>6}] {wide_bar}"),
+    );
+    'outer: for x in 1..max_count {
+        if use_progress {
+            progress.inc(1);
+        }
+        let size = size_round3(occupied_size3(x));
+        if let Some((period1, offset1)) = period(Field::new(x, (size + 3) * 3), rule) {
+            for i in [4, 5, 6, 9] {
+                if !is_same_after(Field::new(x, (size + i) * 3), rule, period1, offset1) {
+                    continue 'outer;
                 }
             }
-        }
 
-        println!("{}", CONTAINER_START);
-        for (x, period, offset) in gliders {
-            if offset != 0 {
-                let field = Field::new(x, 63);
-                print_col(
-                    ni,
-                    &rule.show_field(field.centralize(), period * 3, 1, ni),
-                    &format!("n{} p{} o{}", x, period, offset),
-                );
+            let min = minimize2(Field::new(x, (size + 5) * 3), rule, period1);
+
+            if !check_used(min, period1, rule, &used) {
+                add_used(min, period1, rule, &mut used);
+                gliders.insert((min.val, period1, offset1));
             }
         }
-        println!("{}", CONTAINER_END);
     }
-    println!("{}", AFTER);
+    gliders
 }
 
+fn show_gliders_for_all_rules() {
+    let mut table = File::create("data/table.html").unwrap();
+    let mut csv = File::create("data/table.csv").unwrap();
+    writeln!(
+        table,
+        "<style>
+table {{
+    border-top: 1px solid black;
+    border-right: 1px solid black;
+    border-collapse: separate;
+    border-spacing: 0px 0px;
+}}
+td {{
+    border-left: 1px solid black;
+    border-top: 1px solid black;
+}}
+td:nth-child(2) {{ background-color: #e3e3ff; }}
+td:nth-child(3) {{ background-color: #e3e3ff; }}
+td:nth-child(4) {{ background-color: #cbf9cb; }}
+td:nth-child(5) {{ background-color: #cbf9cb; }}
+td:nth-child(6) {{ background-color: #cbf9cb; }}
+td:nth-child(7) {{ background-color: #cbf9cb; }}
+</style>"
+    )
+    .unwrap();
+    writeln!(table, "<table>").unwrap();
+
+    macro_rules! cell {
+        ($a:expr) => {
+            writeln!(table, "<td>{}</td>", $a).unwrap();
+        };
+    }
+
+    macro_rules! row {
+        ($($a:tt)*) => {
+            writeln!(table, "<tr>").unwrap();
+            $($a)*
+            writeln!(table, "</tr>").unwrap();
+        };
+    }
+
+    row! {
+        cell!("Rule");
+        cell!("Osc #");
+        cell!("Osc uniq");
+        cell!("Gldr #");
+        cell!("Gldr < #");
+        cell!("Gldr > #");
+        cell!("Gldr uniq");
+    }
+
+    writeln!(csv, "rule,osc_n,osc_uniq,gldr,gldr_l,gldr_r,gldr_uniq").unwrap();
+
+    macro_rules! cell {
+        ($a:expr) => {
+            if $a != 0 {
+                writeln!(table, "<td>{}</td>", $a).unwrap();
+            } else {
+                writeln!(table, "<td></td>").unwrap();
+            }
+        };
+    }
+
+    let progress = ProgressBar::new(5100).with_style(
+        ProgressStyle::default_bar()
+            .template("[elapsed: {elapsed:>6} | remaining: {eta:>6}] {wide_bar}"),
+    );
+    for hundreds in 0..51 {
+        let current_gliders_file =
+            format!("gliders{}-{}.html", hundreds * 100, hundreds * 100 + 100);
+        let mut gliders_file = File::create(&format!("data/{}", current_gliders_file)).unwrap();
+        let current_oscillators_file = format!(
+            "oscillators{}-{}.html",
+            hundreds * 100,
+            hundreds * 100 + 100
+        );
+        let mut oscillators_file =
+            File::create(&format!("data/{}", current_oscillators_file)).unwrap();
+        writeln!(gliders_file, "{}", BEFORE).unwrap();
+        writeln!(oscillators_file, "{}", BEFORE).unwrap();
+        let size = 100;
+        for ni in (0..size).map(|x| x + hundreds * 100) {
+            progress.inc(1);
+
+            writeln!(gliders_file, "<div id='{}'></div>", ni).unwrap();
+            writeln!(oscillators_file, "<div id='{}'></div>", ni).unwrap();
+
+            let rule = Rule::num_to_rule(ni);
+
+            let gliders = get_gliders(&rule, 10_000, false);
+
+            writeln!(gliders_file, "{}", CONTAINER_START).unwrap();
+            writeln!(oscillators_file, "{}", CONTAINER_START).unwrap();
+            for (x, period, offset) in &gliders {
+                let field = Field::new(*x, 63);
+                if *offset != 0 {
+                    print_col(
+                        &mut gliders_file,
+                        ni,
+                        &rule.show_field(field.centralize(), period * 3 * 2, 1, ni),
+                        &format!("n{} p{} o{}", x, period, offset),
+                    );
+                } else {
+                    print_col(
+                        &mut oscillators_file,
+                        ni,
+                        &rule.show_field(field.centralize(), period * 3 * 2, 1, ni),
+                        &format!("n{} p{}", x, period),
+                    );
+                }
+            }
+            writeln!(gliders_file, "{}", CONTAINER_END).unwrap();
+            writeln!(oscillators_file, "{}", CONTAINER_END).unwrap();
+
+            let mut oscillators_count = 0;
+            let mut gliders_left_count = 0;
+            let mut gliders_right_count = 0;
+            let mut oscillators_p_o_uniq = HashSet::new();
+            let mut gliders_p_o_uniq = HashSet::new();
+            for (_, period, offset) in &gliders {
+                if *offset == 0 {
+                    oscillators_count += 1;
+                    oscillators_p_o_uniq.insert(period);
+                } else {
+                    if *offset < 1 {
+                        gliders_right_count += 1;
+                    } else {
+                        gliders_left_count += 1;
+                    }
+                    gliders_p_o_uniq.insert((period, offset));
+                }
+            }
+
+            row! {
+                cell!(ni);
+                if oscillators_count == 0 {
+                    cell!(0);
+                } else {
+                    writeln!(table, "<td><a href='{}#{}'>{}</a></td>", current_oscillators_file, ni, oscillators_count).unwrap();
+                }
+                cell!(oscillators_p_o_uniq.len());
+                if gliders_left_count + gliders_right_count == 0 {
+                    cell!(0);
+                } else {
+                    writeln!(table, "<td><a href='{}#{}'>{}</a></td>", current_gliders_file, ni, gliders_left_count + gliders_right_count).unwrap();
+                }
+                cell!(gliders_left_count);
+                cell!(gliders_right_count);
+                cell!(gliders_p_o_uniq.len());
+            }
+
+            writeln!(
+                csv,
+                "{},{},{},{},{},{},{}",
+                ni,
+                oscillators_count,
+                oscillators_p_o_uniq.len(),
+                gliders_left_count + gliders_right_count,
+                gliders_left_count,
+                gliders_right_count,
+                gliders_p_o_uniq.len()
+            )
+            .unwrap();
+        }
+        writeln!(gliders_file, "{}", AFTER).unwrap();
+        writeln!(oscillators_file, "{}", AFTER).unwrap();
+    }
+    writeln!(table, "</table>").unwrap();
+}
+
+fn find_more_gliders(ni: u64) {
+    let rule = Rule::num_to_rule(ni);
+    let gliders = get_gliders(&rule, 100_000_000, true);
+    let mut file = File::create(&format!("data/gliders{}.html", ni)).unwrap();
+
+    writeln!(file, "{}", BEFORE).unwrap();
+    writeln!(file, "{}", CONTAINER_START).unwrap();
+    for (x, period, offset) in &gliders {
+        let field = Field::new(*x, 63);
+        print_col(
+            &mut file,
+            ni,
+            &rule.show_field(field.centralize(), period * 3 * 2, 1, ni),
+            &format!("n{} p{} o{}", x, period, offset),
+        );
+    }
+    writeln!(file, "{}", CONTAINER_END).unwrap();
+    writeln!(file, "{}", AFTER).unwrap();
+}
+
+fn find_cool_rules() {
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    struct TableElem {
+        rule: u64,
+        #[serde(rename = "osc_n")]
+        oscillators_count: u64,
+        #[serde(rename = "osc_uniq")]
+        oscillators_uniq: u64,
+        #[serde(rename = "gldr")]
+        gliders_count: u64,
+        #[serde(rename = "gldr_l")]
+        gliders_left: u64,
+        #[serde(rename = "gldr_r")]
+        gliders_right: u64,
+        #[serde(rename = "gldr_uniq")]
+        gliders_uniq: u64,
+    }
+
+    impl std::fmt::Display for TableElem {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(
+                f,
+                "{:5}: o({:3} {:3}) g({:3} | {:3} | {:3} | {:3})",
+                self.rule,
+                self.oscillators_count,
+                self.oscillators_uniq,
+                self.gliders_count,
+                self.gliders_left,
+                self.gliders_right,
+                self.gliders_uniq
+            )
+        }
+    }
+
+    let mut rdr = csv::Reader::from_reader(File::open("data/table.csv").unwrap());
+    let mut elems = rdr
+        .deserialize()
+        .map(|r| r.unwrap())
+        .collect::<Vec<TableElem>>();
+    elems = elems
+        .into_iter()
+        .filter(|x| {
+            x.oscillators_count != 0
+                && x.gliders_left > 0
+                && x.gliders_right > 0
+                && x.oscillators_count >= 3
+        })
+        .collect();
+    elems.sort_by_key(|x| {
+        // let a = x.gliders_left as f64;
+        // let b = x.gliders_right as f64;
+        // (a.max(b) / a.min(b) * 10000.) as i32
+
+        -(x.oscillators_count as i64)
+    });
+    for i in elems.iter().take(20) {
+        println!("{}", i);
+    }
+}
+
+fn main() {
+    // show_gliders_for_all_rules();
+    // find_more_gliders(633);
+    // find_cool_rules();
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test1() {
+        let rule = Rule::num_to_rule(633);
+        let mut used: HashMap<u64, (u64, u64, i32)> = HashMap::new(); // val, (period, next, offset)
+
+        add_used(Field::new(1, 9), 2, &rule, &mut used);
+        add_used(Field::new(2, 9), 2, &rule, &mut used);
+        add_used(Field::new(4, 9), 2, &rule, &mut used);
+        assert!(!check_used(Field::new(3, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(5, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(10, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(45, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(765, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(1215, 30), 28, &rule, &used));
+        assert!(!check_used(Field::new(6125, 30), 13, &rule, &used));
+        assert!(check_used(Field::new(4, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(17, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(23, 30), 4, &rule, &used));
+
+        add_used(Field::new(3, 9), 2, &rule, &mut used);
+        add_used(Field::new(6, 9), 2, &rule, &mut used);
+        add_used(Field::new(12, 9), 2, &rule, &mut used);
+        assert!(!check_used(Field::new(5, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(10, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(45, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(765, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(1215, 30), 28, &rule, &used));
+        assert!(!check_used(Field::new(6125, 30), 13, &rule, &used));
+        assert!(check_used(Field::new(12, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(19, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(27, 30), 4, &rule, &used));
+
+        add_used(Field::new(5, 9), 4, &rule, &mut used);
+        assert!(!check_used(Field::new(45, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(765, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(1215, 30), 28, &rule, &used));
+        assert!(!check_used(Field::new(6125, 30), 13, &rule, &used));
+        assert!(check_used(Field::new(2565, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(2805, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(10405, 30), 4, &rule, &used));
+        assert!(check_used(Field::new(89775, 30), 4, &rule, &used));
+
+        add_used(Field::new(10, 9), 2, &rule, &mut used);
+        assert!(!check_used(Field::new(45, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(765, 30), 13, &rule, &used));
+        assert!(!check_used(Field::new(1215, 30), 28, &rule, &used));
+        assert!(!check_used(Field::new(6125, 30), 13, &rule, &used));
+        assert!(check_used(Field::new(490, 30), 2, &rule, &used));
+        assert!(check_used(Field::new(650, 30), 2, &rule, &used));
+        assert!(check_used(Field::new(3850, 30), 2, &rule, &used));
+
+        add_used(Field::new(45, 12), 13, &rule, &mut used);
+        assert!(check_used(Field::new(23085, 30), 13, &rule, &used));
+        assert!(check_used(Field::new(23275, 30), 13, &rule, &used));
+        assert!(check_used(Field::new(92255, 30), 13, &rule, &used));
+    }
 
     #[test]
     fn test() {
@@ -450,6 +826,40 @@ mod tests {
         assert!(check_reach_everything(Field::new(13805, 30), &rule, 43));
         assert!(!check_reach_everything(Field::new(23275, 30), &rule, 13));
         assert!(!check_reach_everything(Field::new(390650, 30), &rule, 13));
+
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 10 * 3).rotate_left(3 * 3)),
+            3
+        );
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 10 * 3).rotate_left(3 * 2)),
+            2
+        );
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 10 * 3).rotate_left(3)),
+            1
+        );
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 10 * 3).rotate_right(3)),
+            -1
+        );
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 10 * 3).rotate_right(3 * 2)),
+            -2
+        );
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 10 * 3).rotate_right(3 * 3)),
+            -3
+        );
+
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 4 * 3).rotate_left(3)),
+            1
+        );
+        assert_eq!(
+            find_pattern_start(Field::new(0b001_101_100, 4 * 3).rotate_right(3)),
+            -1
+        );
     }
 }
 
