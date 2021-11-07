@@ -1,5 +1,5 @@
-/target
-img/
+target/
+data/
 *.zip
 *.csv
 *.html
