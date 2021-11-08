@@ -746,22 +746,26 @@ fn is_this_glider_gun(val: u64, rule: &Rule) -> Option<(u64, u64, u64, i32)> {
             if (x0.val & pat) == val && (x0.val & !pat) != 0 {
                 let x0_without_gun = Field::new(x0.val & !pat, x0.size).minimize();
 
-                // let mut x1 = Field::new(val, 63);
-                // rule.steps_count(&mut x1, count);
-                // if (x1.val & pat) == val && (x1.val & !pat) != 0 {
-                // let x1_without_gun = Field::new(x1.val & !pat, x1.size).minimize();
+                let mut x1 = Field::new(val, 63);
+                rule.steps_count(&mut x1, count);
+                if (x1.val & pat) == val && (x1.val & !pat) != 0 {
+                    let x1_without_gun = Field::new(x1.val & !pat, x1.size).minimize();
 
-                // if x_without_gun.val == x1_without_gun.val {
-                if let Some(((min, period, offset), (_, period0, offset0))) =
-                    is_this_glider(x_without_gun.val, rule)
-                        .zip(is_this_glider(x0_without_gun.val, rule))
-                {
-                    if period == period0 && offset == offset0 && offset != 0 && period <= count {
-                        return Some((count, min.val, period, offset));
+                    if x_without_gun.val == x1_without_gun.val {
+                        if let Some(((min, period, offset), (_, period0, offset0))) =
+                            is_this_glider(x_without_gun.val, rule)
+                                .zip(is_this_glider(x0_without_gun.val, rule))
+                        {
+                            if period == period0
+                                && offset == offset0
+                                && offset != 0
+                                && period <= count
+                            {
+                                return Some((count, min.val, period, offset));
+                            }
+                        }
                     }
                 }
-                // }
-                // }
             }
         }
         rule.steps(&mut x);
